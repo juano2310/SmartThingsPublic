@@ -813,7 +813,7 @@ def deviceHandler(evt) {
 		}
 	} else if (deviceInfo) {
 		if (deviceInfo.callbackUrl) {
-			sendToHarmony(evt, deviceInfo.callbackUrl)
+			sendToHarmonyCloud(evt, deviceInfo.callbackUrl)
 		} else {
 			log.warn "No callbackUrl set for device: ${evt.deviceId}"
 		}
@@ -835,6 +835,21 @@ def sendToHarmony(evt, String callbackUrl) {
 		],
 		body: [evt: [deviceId: evt.deviceId, name: evt.name, value: evt.value]]
 	))
+}
+
+def sendToHarmonyCloud(evt, String callbackUrl) {
+  def params = [
+    uri: callbackUrl,
+    body: [evt: [deviceId: evt.deviceId, name: evt.name, value: evt.value]]
+  ]
+  try {
+      log.debug "Sending data to Harmony Cloud: $params"
+      httpPostJson(params) { resp ->
+          log.debug "Harmony Cloud - Response: ${resp.status}"
+      }
+  } catch (e) {
+      log.error "Harmony Cloud - Something went wrong: $e"
+  }
 }
 
 def listHubs() {
