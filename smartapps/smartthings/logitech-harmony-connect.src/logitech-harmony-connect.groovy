@@ -97,7 +97,7 @@ def authPage() {
     def description = null
     if (!state.HarmonyAccessToken) {
 		if (!state.accessToken) {
-			log.debug "About to create access token"
+			log.debug "Harmony - About to create access token"
 			createAccessToken()
 		}
         description = "Click to enter Harmony Credentials"
@@ -341,7 +341,8 @@ def initialize() {
 	state.aux = 0
 	if (selectedhubs || selectedactivities) {
 		addDevice()
-        runEvery5Minutes("poll")
+    runEvery5Minutes("poll")
+    getActivityList()
 	}
 }
 
@@ -548,6 +549,38 @@ def pollResponse(response, data) {
 					log.debug "Logitech Harmony - did not get json results from response body: $response.data"
 			}
 	}
+}
+
+def getActivityList() {
+    if (state.HarmonyAccessToken) {
+        def Params = [auth: state.HarmonyAccessToken]
+        def url = "https://home.myharmony.com/cloudapi/activity/all?${toQueryString(Params)}"
+        try {
+            httpGet(uri: url, headers: ["Accept": "application/json"]) {response ->
+                response.data.hubs.each {
+                    def hub = getChildDevice("harmony-${it.key}")
+                    if (hub) {
+                    	def hubname = getHubName("${it.key}")
+                        def activities = []
+                        def aux = it.value.response.data.activities.size()
+                        if (aux >= 1) {
+                            activities = it.value.response.data.activities.collect {
+                                [id: it.key, name: it.value['name'], type: it.value['type']]
+                            }
+                            activities += [id: "off", name: "Activity OFF", type: "0"]
+                        }
+                        hub.sendEvent(name: "activities", value: new groovy.json.JsonBuilder(activities).toString(), descriptionText: "Activities are ${activities.collect { it.name }?.join(', ')}", display: false)
+					          }
+                }
+            }
+        } catch (groovyx.net.http.HttpResponseException e) {
+        	log.trace e
+        } catch (java.net.SocketTimeoutException e) {
+        	log.trace e
+		    } catch(Exception e) {
+        	log.trace e
+		    }
+    }
 }
 
 def getActivityName(activity,hubId) {
