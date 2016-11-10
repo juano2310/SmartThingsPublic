@@ -89,14 +89,17 @@ def parse(String description) {
 			log.debug "TEMP"
 			map.name = "temperature"
 			map.value = getTemperature(descMap.value)
+			map.unit = temperatureScale
 		} else if (descMap.cluster == "0201" && descMap.attrId == "0011") {
 			log.debug "COOLING SETPOINT"
 			map.name = "coolingSetpoint"
 			map.value = getTemperature(descMap.value)
+			map.unit = temperatureScale
 		} else if (descMap.cluster == "0201" && descMap.attrId == "0012") {
 			log.debug "HEATING SETPOINT"
 			map.name = "heatingSetpoint"
 			map.value = getTemperature(descMap.value)
+			map.unit = temperatureScale
 		} else if (descMap.cluster == "0201" && descMap.attrId == "001c") {
 			log.debug "MODE"
 			map.name = "thermostatMode"
@@ -153,31 +156,37 @@ def refresh()
 //}
 
 def getTemperature(value) {
-	def celsius = Integer.parseInt(value, 16) / 100
-	if(getTemperatureScale() == "C"){
-		return celsius
-	} else {
-		return celsiusToFahrenheit(celsius) as Integer
+	if (value != null) {
+		def celsius = Integer.parseInt(value, 16) / 100
+		if (getTemperatureScale() == "C") {
+			return celsius
+		} else {
+			return Math.round(celsiusToFahrenheit(celsius))
+		}
 	}
 }
 
 def setHeatingSetpoint(degrees) {
-	def temperatureScale = getTemperatureScale()
-	
-	def degreesInteger = degrees as Integer
-	log.debug "setHeatingSetpoint({$degreesInteger} ${temperatureScale})"
-	sendEvent("name":"heatingSetpoint", "value":degreesInteger)
-	
-	def celsius = (getTemperatureScale() == "C") ? degreesInteger : (fahrenheitToCelsius(degreesInteger) as Double).round(2)
-	"st wattr 0x${device.deviceNetworkId} 1 0x201 0x12 0x29 {" + hex(celsius*100) + "}"
+	if (degrees != null) {
+		def temperatureScale = getTemperatureScale()
+
+		def degreesInteger = Math.round(degrees)
+		log.debug "setHeatingSetpoint({$degreesInteger} ${temperatureScale})"
+		sendEvent("name": "heatingSetpoint", "value": degreesInteger, "unit": temperatureScale)
+
+		def celsius = (getTemperatureScale() == "C") ? degreesInteger : (fahrenheitToCelsius(degreesInteger) as Double).round(2)
+		"st wattr 0x${device.deviceNetworkId} 1 0x201 0x12 0x29 {" + hex(celsius * 100) + "}"
+	}
 }
 
 def setCoolingSetpoint(degrees) {
-	def degreesInteger = degrees as Integer
-	log.debug "setCoolingSetpoint({$degreesInteger} ${temperatureScale})"
-	sendEvent("name":"coolingSetpoint", "value":degreesInteger)
-	def celsius = (getTemperatureScale() == "C") ? degreesInteger : (fahrenheitToCelsius(degreesInteger) as Double).round(2)
-	"st wattr 0x${device.deviceNetworkId} 1 0x201 0x11 0x29 {" + hex(celsius*100) + "}"
+	if (degrees != null) {
+		def degreesInteger = Math.round(degrees)
+		log.debug "setCoolingSetpoint({$degreesInteger} ${temperatureScale})"
+		sendEvent("name": "coolingSetpoint", "value": degreesInteger, "unit": temperatureScale)
+		def celsius = (getTemperatureScale() == "C") ? degreesInteger : (fahrenheitToCelsius(degreesInteger) as Double).round(2)
+		"st wattr 0x${device.deviceNetworkId} 1 0x201 0x11 0x29 {" + hex(celsius * 100) + "}"
+	}
 }
 
 def modes() {

@@ -22,11 +22,11 @@ definition(
 	category: "SmartThings Labs",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Partner/life360.png",
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Partner/life360@2x.png",
-    oauth: [displayName: "Life360", displayLink: "Life360"]
+    oauth: [displayName: "Life360", displayLink: "Life360"],
+    singleInstance: true
 ) {
 	appSetting "clientId"
 	appSetting "clientSecret"
-    appSetting "serverUrl"
 }
 
 preferences {
@@ -74,8 +74,6 @@ def authPage()
 
 		def redirectUrl = oauthInitUrl()
     
-  	  	log.debug "RedirectURL = ${redirectUrl}"
-
 		return dynamicPage(name: "Credentials", title: "Life360", nextPage:"listCirclesPage", uninstall: uninstallOption, install:false) {
 		    section {
     			href url:redirectUrl, style:"embedded", required:false, title:"Life360", description:description
@@ -191,7 +189,7 @@ def getSmartThingsClientId() {
    return "pREqugabRetre4EstetherufrePumamExucrEHuc"
 }
 
-def getServerUrl() { appSettings.serverUrl }
+def getServerUrl() { getApiServerUrl() }
 
 def buildRedirectUrl()
 {
@@ -257,8 +255,6 @@ def initializeLife360Connection() {
 	def oauthClientId = appSettings.clientId
 	def oauthClientSecret = appSettings.clientSecret
 
-	log.debug "Installed with settings: ${settings}"
-
 	initialize()
     
     def username = settings.username
@@ -269,8 +265,6 @@ def initializeLife360Connection() {
   	def basicCredentials = "${oauthClientId}:${oauthClientSecret}"
     def encodedCredentials = basicCredentials.encodeAsBase64().toString()
     
-    log.debug "Encoded Creds: ${encodedCredentials}"
-
     
     // call life360, get OAUTH token using password flow, save
     // curl -X POST -H "Authorization: Basic cFJFcXVnYWJSZXRyZTRFc3RldGhlcnVmcmVQdW1hbUV4dWNyRUh1YzptM2ZydXBSZXRSZXN3ZXJFQ2hBUHJFOTZxYWtFZHI0Vg==" 
@@ -284,8 +278,6 @@ def initializeLife360Connection() {
     				"username=${username}&"+
                     "password=${password}"
 
-    log.debug "Post Body: ${postBody}"
-	   
     def result = null
     
     try {
@@ -295,7 +287,6 @@ def initializeLife360Connection() {
 		}
         if (result.data.access_token) {
        		state.life360AccessToken = result.data.access_token
-       		log.debug "Access Token = ${state.life360AccessToken}"
             return true;
    		}
 		log.debug "Response=${result.data}"
@@ -533,8 +524,6 @@ def createCircleSubscription() {
         
     def postBody =  "url=${hookUrl}"
 
-    log.debug "Post Body: ${postBody}"
-	   
     def result = null
     
     try {
@@ -586,12 +575,10 @@ def updated() {
         
         	// log.debug "After Find Attempt."
 
-       		log.debug "Member Id = ${member.id}, Name = ${member.firstName} ${member.lastName}, Email Address = ${member.loginEmail}"
-        
         	// log.debug "External Id=${app.id}:${member.id}"
        
        		// create the device
-       		def childDevice = addChildDevice("smartthings", "life360-user", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true])
+       		def childDevice = addChildDevice("smartthings", "Life360 User", "${app.id}.${member.id}",null,[name:member.firstName, completedSetup: true])
             // childDevice.setMemberId(member.id)
         
         	if (childDevice)

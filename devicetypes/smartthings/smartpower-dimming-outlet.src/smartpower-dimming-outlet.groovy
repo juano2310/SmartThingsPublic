@@ -69,15 +69,17 @@ metadata {
 def parse(String description) {
 	log.debug "description is $description"
 
+	def event = [:]
 	def finalResult = isKnownDescription(description)
 	if (finalResult != "false") {
 		log.info finalResult
 		if (finalResult.type == "update") {
 			log.info "$device updates: ${finalResult.value}"
+			event = null
 		}
 		else if (finalResult.type == "power") {
 			def powerValue = (finalResult.value as Integer)/10
-			sendEvent(name: "power", value: powerValue)
+			event = createEvent(name: "power", value: powerValue)
 
 			/*
 				Dividing by 10 as the Divisor is 10000 and unit is kW for the device. AttrId: 0302 and 0300. Simplifying to 10
@@ -87,13 +89,14 @@ def parse(String description) {
 			*/
 		}
 		else {
-			sendEvent(name: finalResult.type, value: finalResult.value)
+			event = createEvent(name: finalResult.type, value: finalResult.value)
 		}
 	}
 	else {
 		log.warn "DID NOT PARSE MESSAGE for description : $description"
 		log.debug parseDescriptionAsMap(description)
 	}
+	return event
 }
 
 // Commands to device
@@ -133,7 +136,7 @@ def refresh() {
 }
 
 def configure() {
-	onOffConfig() + levelConfig() + powerConfig() + refresh()
+	refresh() + onOffConfig() + levelConfig() + powerConfig()
 }
 
 
@@ -287,7 +290,8 @@ def isDescriptionPower(descMap) {
 	def powerValue = "undefined"
 	if (descMap.cluster == "0B04") {
 		if (descMap.attrId == "050b") {
-			powerValue = convertHexToInt(descMap.value)
+			if(descMap.value!="ffff")
+				powerValue = convertHexToInt(descMap.value)
 		}
 	}
 	else if (descMap.clusterId == "0B04") {
@@ -327,10 +331,9 @@ def levelConfig() {
 //min change in value is 05
 def powerConfig() {
 	[
-			//Meter (Power) Reporting
-			"zdo bind 0x${device.deviceNetworkId} 1 ${endpointId} 0x0B04 {${device.zigbeeId}} {}", "delay 200",
-			"zcl global send-me-a-report 0x0B04 0x050B 0x2A 1 600 {05}",
-			"send 0x${device.deviceNetworkId} 1 ${endpointId}", "delay 1500"
+		"zdo bind 0x${device.deviceNetworkId} 1 ${endpointId} 0x0B04 {${device.zigbeeId}} {}", "delay 200",
+		"zcl global send-me-a-report 0x0B04 0x050B 0x29 1 600 {05 00}",				//The send-me-a-report is custom to the attribute type for CentraLite
+		"send 0x${device.deviceNetworkId} 1 ${endpointId}", "delay 500"
 	]
 }
 
