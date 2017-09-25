@@ -370,10 +370,12 @@ Map discoverDevices() {
 			def hubname = getHubName(it.key)
 			def hubvalue = "${hubname}"
 			hubs["harmony-${hubkey}"] = hubvalue
-			it.value.response.data.activities.each {
-				def value = "${it.value.name}"
-				def key = "harmony-${hubkey}-${it.key}"
-				activities["${key}"] = value
+			if (it.value.response){
+				it.value.response?.data.activities.each {
+					def value = "${it.value.name}"
+					def key = "harmony-${hubkey}-${it.key}"
+					activities["${key}"] = value
+				}
 			}
         }
         state.HarmonyHubs = hubs
